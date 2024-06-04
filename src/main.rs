@@ -1,5 +1,6 @@
-use std::{env, fs, io::{self, Write}, path::PathBuf};
+use std::{env, fs, io, path::PathBuf};
 
+use reqwest::Client;
 use ytmapi_rs::auth::OAuthToken;
 
 fn get_cache_dir() -> PathBuf {
@@ -28,7 +29,9 @@ pub async fn main() -> Result<(), ytmapi_rs::Error> {
     // so it's recommended to save it to a file here.
     let token: OAuthToken;
     if let Ok(contents) = std::fs::read_to_string(&get_cache_dir().join("oauth.json")) {
-        token = serde_json::from_str(&contents).expect("Invalid token json");
+        let client = Client::new();
+        let maybe_expired_token: OAuthToken = serde_json::from_str(&contents).expect("Invalid token json");
+        token = maybe_expired_token.refresh(&client).await.unwrap();
     } else {
         token = generate_token().await?;
     }
